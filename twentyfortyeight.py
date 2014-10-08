@@ -9,8 +9,9 @@ from random import randint
 
 
 class Grid():
-    def __init__(self, update, rows, columns):
+    def __init__(self, update, rows, columns, score_adj):
         self._update = update
+        self.score_adjust = score_adj
         self.rows = rows
         self.columns = columns
         self.cells = []
@@ -19,22 +20,22 @@ class Grid():
 
         self.update()
 
-    def update(self):
-        if self.place_random():
-            res = []
-            for arr in self.cells:
-                res += arr
-            print("Updated grid")
-            self._update(res)
-        else:
-            print("Gameover")
-            self._update()
+    def update(self, add_random=True):
+        if add_random:
+            if self.place_random():
+                res = []
+                for arr in self.cells:
+                    res += arr
+                self._update(res)
+            else:
+                print("Gameover")
+                self._update()
 
     def place_random(self):
         available = self.available_cells()
 
         if len(available) != 0:
-            coords = available[randint(0, len(available))]
+            coords = available[randint(0, len(available) - 1)]
             self.cells[coords[0]][coords[1]] = randint(1, 2) * 2
             return True
 
@@ -42,25 +43,86 @@ class Grid():
             # Game over
             return False
 
+    def in_bounds(self, x, y):
+        return x > -1 and y > -1 and x < self.rows and y < self.columns
+
+    def cell_available(self, x, y):
+        return self.cells[y][x] == 0
+
     def available_cells(self):
         cells = []
         for x in range(self.rows):
             for y in range(self.columns):
-                if self.cells[x][y] == 0:
-                    cells.append((x, y))
+                if self.cell_available(x, y):
+                    cells.append((y, x))
         return cells
 
+    def move(self, dx, dy):
+        (x_traversals, y_traversals) = self.build_traversals(dx, dy)
+
+        # set-up merges
+        merges = []
+        for i in range(self.rows):
+            merges.append([False] * self.columns)
+
+        moved = False
+
+        for x in x_traversals:
+            for y in y_traversals:
+                current_tile = self.cells[y][x]
+                (farthest_x, farthest_y, next_x, next_y) = self.find_farthest(x, y, dx, dy)
+                merged = False
+
+                next_tile = False
+                if self.in_bounds(next_x, next_y):
+                    next_tile = self.cells[next_y][next_x]
+                
+                if next_tile != False and next_tile == current_tile and merges[x][y] == False:
+                    merges[x][y] = True
+                    # combine
+                    self.cells[y][x] = 0
+                    self.cells[next_y][next_x] *= 2
+                    self.score_adjust(self.cells[y][x])
+                    moved = True
+                elif farthest_x != x or farthest_y != y:
+                    self.cells[farthest_y][farthest_x] = self.cells[y][x]
+                    self.cells[y][x] = 0
+                    moved = True
+        return moved
+
+    def find_farthest(self, cx, cy, dx, dy):
+        while True:
+            farthest_x = cx
+            farthest_y = cy
+            next_x = cx + dx
+            next_y = cy + dy
+            cx += dx
+            cy += dy
+            if not self.in_bounds(cx, cy) or \
+                not self.cell_available(cx, cy):
+                break
+        return (farthest_x, farthest_y, next_x, next_y)
+
+    def build_traversals(self, dx, dy):
+        xt = list(range(self.rows))
+        yt = list(range(self.columns))
+        if dx == 1:
+            xt.reverse()
+        if dy == 1:
+            yt.reverse()
+        return (xt, yt)
+
     def shift_up(self):
-        self.update()
+        self.update(add_random=self.move(0, -1))
 
     def shift_down(self):
-        self.update()
+        self.update(add_random=self.move(0, 1))
 
     def shift_left(self):
-        self.update()
+        self.update(add_random=self.move(-1, 0))
 
     def shift_right(self):
-        self.update()
+        self.update(add_random=self.move(1, 0))
 
 
 class App(tk.Frame):
@@ -107,8 +169,10 @@ class App(tk.Frame):
                 cellVars.append(newCellVar)
 
         self._t_cells = cellVars
+
         self._t_grid = Grid(update=self.updateGridDisplay,
-                            rows=rows, columns=columns)
+                            rows=rows, columns=columns,
+                            score_adj=self.score_change)
 
         self.keyHandlers = {
             "w": self._t_grid.shift_up,
@@ -127,6 +191,9 @@ class App(tk.Frame):
 
         self.startGame()
         cellGrid.focus_set()
+
+    def score_change(self, adj):
+        self._t_score += adj
 
     def updateGridDisplay(self, numbersArray=False):
         if not numbersArray:
