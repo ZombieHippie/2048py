@@ -5,12 +5,12 @@ Version: 0.0.1
 """
 
 import tkinter as tk
+from random import randint
 
 
 class Grid():
-    def __init__(self, update, end, rows, columns):
+    def __init__(self, update, rows, columns):
         self._update = update
-        self.end = end
         self.rows = rows
         self.columns = columns
         self.cells = []
@@ -20,21 +20,46 @@ class Grid():
         self.update()
 
     def update(self):
-        res = []
-        for arr in self.cells:
-            res += arr
-        self._update(res)
+        if self.place_random():
+            res = []
+            for arr in self.cells:
+                res += arr
+            print("Updated grid")
+            self._update(res)
+        else:
+            print("Gameover")
+            self._update()
 
-    def shiftUp(self):
+    def place_random(self):
+        available = self.available_cells()
+
+        if len(available) != 0:
+            coords = available[randint(0, len(available))]
+            self.cells[coords[0]][coords[1]] = randint(1, 2) * 2
+            return True
+
+        else:
+            # Game over
+            return False
+
+    def available_cells(self):
+        cells = []
+        for x in range(self.rows):
+            for y in range(self.columns):
+                if self.cells[x][y] == 0:
+                    cells.append((x, y))
+        return cells
+
+    def shift_up(self):
         self.update()
 
-    def shiftDown(self):
+    def shift_down(self):
         self.update()
 
-    def shiftLeft(self):
+    def shift_left(self):
         self.update()
 
-    def shiftRight(self):
+    def shift_right(self):
         self.update()
 
 
@@ -51,15 +76,17 @@ class App(tk.Frame):
         self.grid()
         self.master.title("2048py")
 
-        self._t_gameStartBtnText = tk.StringVar()
-        self._t_gameStartBtn = tk.Button(self,
-                                         textvariable=self._t_gameStartBtnText,
-                                         command=self.startGame)
-        self._t_gameStartBtnText.set("Start Game")
-        self._t_gameStartBtn.grid()
+        self._text_start = tk.StringVar()
+        self._btn_start = tk.Button(self,
+                                    textvariable=self._text_start,
+                                    command=self.startGame)
+        self._text_start.set("Start Game")
+        self._btn_start.grid()
 
-        self._t_scoreLabel = tk.Label(self, text="Start Game")
-        self._t_scoreLabel.grid()
+        self._text_score = tk.StringVar()
+        self._text_score.set("Start Game")
+
+        tk.Label(self, textvariable=self._text_score).grid()
         self._t_score = 0
 
         cellGrid = tk.Frame(self, width=480, height=480, padx=20, pady=20)
@@ -80,14 +107,14 @@ class App(tk.Frame):
                 cellVars.append(newCellVar)
 
         self._t_cells = cellVars
-        self._t_grid = Grid(update=self.updateGridDisplay, end=self.endGame,
+        self._t_grid = Grid(update=self.updateGridDisplay,
                             rows=rows, columns=columns)
 
         self.keyHandlers = {
-            "w": self._t_grid.shiftUp,
-            "a": self._t_grid.shiftLeft,
-            "d": self._t_grid.shiftRight,
-            "s": self._t_grid.shiftDown
+            "w": self._t_grid.shift_up,
+            "a": self._t_grid.shift_left,
+            "d": self._t_grid.shift_right,
+            "s": self._t_grid.shift_down
         }
 
         cellGrid.bind("<Key>", self.keyHandler)
@@ -101,22 +128,24 @@ class App(tk.Frame):
         self.startGame()
         cellGrid.focus_set()
 
-    def updateGridDisplay(self, numbersArray):
-        print(numbersArray)
-        for n in range(len(numbersArray)):
-            value = numbersArray[n]
-            value = "" if value is 0 else str(value)
-            self._t_cells[n].set(value)
+    def updateGridDisplay(self, numbersArray=False):
+        if not numbersArray:
+            self.gameOver = True
+            self.endGame()
+        else:
+            for n in range(len(numbersArray)):
+                value = numbersArray[n]
+                value = "" if value is 0 else str(value)
+                self._t_cells[n].set(value)
 
     def startGame(self):
         if not self.gameStarted and not self.gameOver:
             self.gameStarted = True
-            self._t_gameStartBtnText.set("Game in progress")
+            self._text_start.set("Game in progress")
 
     def endGame(self):
-        if self.gameStarted and not self.gameOver:
-            self.gameOver = True
-            self._t_gameStartBtn["text"] = "Game in progress"
+        if self.gameOver:
+            self._text_start.set("Game Over!")
 
     def keyHandler(self, event):
         letter = str(event.char)
@@ -124,4 +153,4 @@ class App(tk.Frame):
             self.keyHandlers[letter]()
 
     def updateScore(self):
-        self._scoreLabel["text"] = "Score: " + str(self._score)
+        self._text_score.set("Score: " + str(self._score))
