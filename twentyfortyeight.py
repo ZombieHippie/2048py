@@ -6,6 +6,7 @@ Version: 0.0.1
 
 import tkinter as tk
 from random import randint
+nsew = tk.N + tk.S + tk.W + tk.E
 
 
 class Grid():
@@ -82,7 +83,7 @@ class Grid():
                     # combine
                     self.cells[y][x] = 0
                     self.cells[next_y][next_x] *= 2
-                    self.score_adjust(self.cells[y][x])
+                    self.score_adjust(self.cells[next_y][next_x])
                     moved = True
                 elif farthest_x != x or farthest_y != y:
                     self.cells[farthest_y][farthest_x] = self.cells[y][x]
@@ -135,37 +136,50 @@ class App(tk.Frame):
         fontSize = 16
         self.customFont = ("Helvetica", fontSize)
 
-        self.grid()
         self.master.title("2048py")
+        self.master.rowconfigure(0, weight = 1)
+        self.master.columnconfigure(0, weight = 1)
+
+        self.rowconfigure(1, weight = 1)
+        self.columnconfigure(0, weight = 1)
+        
+        self.grid(sticky = nsew)
+
+        btns = tk.Frame(self, bg="gray")
+        btns.grid(row=0, column=0, sticky = nsew)
+        btns.columnconfigure(0, weight = 1)
+        btns.columnconfigure(1, weight = 1)
 
         self._text_start = tk.StringVar()
-        self._btn_start = tk.Button(self,
+        self._btn_start = tk.Button(btns,
                                     textvariable=self._text_start,
                                     command=self.startGame)
         self._text_start.set("Start Game")
-        self._btn_start.grid()
+        self._btn_start.grid(column=0, row=0)
 
-        self._text_score = tk.StringVar()
-        self._text_score.set("Start Game")
+        self._text_status = tk.StringVar()
+        self._text_status.set("Start Game")
 
-        tk.Label(self, textvariable=self._text_score).grid()
+        tk.Label(btns, textvariable=self._text_status, bg="gray").grid(column=0, row=2)
         self._t_score = 0
 
-        cellGrid = tk.Frame(self, width=480, height=480, padx=20, pady=20)
-        cellGrid.grid()
+        self._text_score = tk.StringVar()
+        tk.Label(btns, textvariable=self._text_score, font="Helvetica 24").grid(column=1, row=0, rowspan=2, sticky=nsew)
+
+        cellGrid = tk.Frame(self, padx=20, pady=20)
+        cellGrid.grid(row=1, column=0, sticky = nsew)
         cellVars = []
 
-        cellWidth = int(480/fontSize/columns)
-        cellHeight = int(480/fontSize/rows*.56)
-        print(cellWidth, cellHeight)
         for i in range(rows):
+            cellGrid.rowconfigure(i, weight=1)
             for j in range(columns):
+                if i == 0:
+                    cellGrid.columnconfigure(j, weight=1)
                 newCellVar = tk.StringVar()
                 newCell = tk.Label(cellGrid, textvariable=newCellVar,
-                                   width=cellWidth, height=cellHeight,
-                                   font=self.customFont)
+                                   font=self.customFont, bg="#f5f5f5")
                 newCellVar.set("a")
-                newCell.grid(row=i, column=j)
+                newCell.grid(row=i, column=j, sticky = nsew)
                 cellVars.append(newCellVar)
 
         self._t_cells = cellVars
@@ -194,6 +208,7 @@ class App(tk.Frame):
 
     def score_change(self, adj):
         self._t_score += adj
+        self.updateScore()
 
     def updateGridDisplay(self, numbersArray=False):
         if not numbersArray:
@@ -220,4 +235,4 @@ class App(tk.Frame):
             self.keyHandlers[letter]()
 
     def updateScore(self):
-        self._text_score.set("Score: " + str(self._score))
+        self._text_score.set(str(self._t_score))
