@@ -5,7 +5,7 @@ Python 3 implementation of 2048 game
 
 Combination algorithms transposed from [gabrielecirulli's 2048 project](https://github.com/gabrielecirulli/2048).
 
-![Screen shot](http://imgur.com/MDCgWZq)
+![Screen shot](http://i.imgur.com/MDCgWZq.png)
 
 ## How to play
 
